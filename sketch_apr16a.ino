@@ -3,7 +3,6 @@
 #include <UniversalTelegramBot.h>
 #include <ArduinoJson.h>
 
-
 const char* WIFI_SSID = "";
 const char* WIFI_PASSWORD = "";
 
@@ -17,12 +16,17 @@ WiFiClientSecure secured_client;
 UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 unsigned long bot_lasttime = 1000; // last time messages' scan has been done
 
-// Проверяет наличие новых сообщений раз в секунду
-int botRequestDelay = 1000;
-unsigned long lastTimeBotRan;
 
+const int IR_PIN = D5;
 const int ledPin = 2;
+
 int ledStatus = 0;
+volatile bool irState = false;
+
+void ICACHE_RAM_ATTR IR_ISR()
+{
+  irState = true;
+}
 
 // Определяем действия при получении новых сообщений
 void handleNewMessages(int numNewMessages)
@@ -77,22 +81,43 @@ void handleNewMessages(int numNewMessages)
   }
 }
 
+void sendMotionMessage()
+{
+  String message = "Motion detected!";
+
+  if (bot.sendMessage(CHAT_ID, message, ""))
+  {
+    Serial.println("Message sent!");
+  }
+  else
+  {
+    Serial.println("Failed to send message!");
+  }
+
+  irState = false;
+}
 
 void setup()
 {
   Serial.begin(115200);
   Serial.println();
 
+  pinMode(IR_PIN,  INPUT);
   pinMode(ledPin, OUTPUT); // initialize digital ledPin as an output.
   delay(10);
   digitalWrite(ledPin, HIGH); // initialize pin as off (active LOW)
-
+  
   // attempt to connect to Wifi network:
   configTime(0, 0, "pool.ntp.org");      // get UTC time via NTP
+
   secured_client.setTrustAnchors(&cert); // Add root certificate for api.telegram.org
   Serial.print("Connecting to Wifi SSID ");
   Serial.print(WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  attachInterrupt(IR_PIN, IR_ISR, RISING);
+
+
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.print(".");
@@ -101,7 +126,6 @@ void setup()
   Serial.print("\nWiFi connected. IP address: ");
   Serial.println(WiFi.localIP());
 
-  // Check NTP/Time, usually it is instantaneous and you can delete the code below.
   Serial.print("Retrieving time: ");
   time_t now = time(nullptr);
   while (now < 24 * 3600)
@@ -110,6 +134,7 @@ void setup()
     delay(100);
     now = time(nullptr);
   }
+
   Serial.println(now);
 }
 
@@ -126,6 +151,12 @@ void loop()
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     }
 
+    if (irState)
+    {
+      sendMotionMessage();
+    }
+
     bot_lasttime = millis();
   }
+
 }
