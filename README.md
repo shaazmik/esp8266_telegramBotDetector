@@ -12,9 +12,7 @@ The objective of this software is to trigger a message to be sent via a Telegram
 - Arduino IDE (version 1.8.15 or later)
 - ESP8266 Board Manager (version 2.7.4 or later)
 - ArduinoJson library (version 6.18.5 or later)
-- Telegram API
+- Telegram Universal Telegram bot library
 ## System Architecture
 The system will consist of the ESP8266 microcontroller connected to an IR sensor. When movement is detected by the IR sensor, the ESP8266 will send a message via a Telegram bot to designated users.
 
-
-## Testing
